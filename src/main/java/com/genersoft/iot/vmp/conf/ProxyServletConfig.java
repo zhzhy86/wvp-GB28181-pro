@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.ConnectException;
 
@@ -126,7 +127,11 @@ public class ProxyServletConfig {
         MediaServerItem getMediaInfoByUri(String uri){
             String[] split = uri.split("/");
             String mediaServerId = split[2];
-            return mediaServerService.getOne(mediaServerId);
+            if ("default".equals(mediaServerId)) {
+                return mediaServerService.getDefaultMediaServer();
+            }else {
+                return mediaServerService.getOne(mediaServerId);
+            }
         }
 
         /**
@@ -138,15 +143,19 @@ public class ProxyServletConfig {
             MediaServerItem mediaInfo = getMediaInfoByUri(requestURI);
             String url = super.rewriteUrlFromRequest(servletRequest);
             if (mediaInfo == null) {
+                logger.error("[ZLM服务访问代理]，错误：处理url信息时未找到流媒体信息=>{}", requestURI);
                 return  url;
             }
-            return url.replace(mediaInfo.getId() + "/", "");
+            if (!StringUtils.isEmpty(mediaInfo.getId())) {
+                url = url.replace(mediaInfo.getId() + "/", "");
+            }
+            return url.replace("default/", "");
         }
     }
 
     @Bean
     public ServletRegistrationBean recordServletRegistrationBean(){
-        ServletRegistrationBean servletRegistrationBean = new ServletRegistrationBean(new RecordProxySerlet(),"/record_proxy/*");
+        ServletRegistrationBean servletRegistrationBean = new ServletRegistrationBean(new RecordProxyServlet(),"/record_proxy/*");
         servletRegistrationBean.setName("record_proxy");
         servletRegistrationBean.addInitParameter("targetUri", "http://127.0.0.1:18081");
         servletRegistrationBean.addUrlMappings();
@@ -156,16 +165,30 @@ public class ProxyServletConfig {
         return servletRegistrationBean;
     }
 
-    class RecordProxySerlet extends ProxyServlet{
+    class RecordProxyServlet extends ProxyServlet{
 
+        @Override
+        protected String rewriteQueryStringFromRequest(HttpServletRequest servletRequest, String queryString) {
+            String queryStr = super.rewriteQueryStringFromRequest(servletRequest, queryString);
+            MediaServerItem mediaInfo = getMediaInfoByUri(servletRequest.getRequestURI());
+            String remoteHost = String.format("http://%s:%s", mediaInfo.getIp(), mediaInfo.getHttpPort());
+            if (mediaInfo != null) {
+                if (!StringUtils.isEmpty(queryStr)) {
+                    queryStr += "&remoteHost=" + remoteHost;
+                }else {
+                    queryStr = "remoteHost=" + remoteHost;
+                }
+            }
+            return queryStr;
+        }
 
         /**
          * 异常处理
          */
         @Override
-        protected void handleRequestException(HttpRequest proxyRequest, HttpResponse proxyResonse, Exception e){
+        protected void handleRequestException(HttpRequest proxyRequest, HttpResponse proxyResponse, Exception e){
             try {
-                super.handleRequestException(proxyRequest, proxyResonse, e);
+                super.handleRequestException(proxyRequest, proxyResponse, e);
             } catch (ServletException servletException) {
                 logger.error("录像服务 代理失败： ", e);
             } catch (IOException ioException) {
@@ -222,7 +245,12 @@ public class ProxyServletConfig {
         MediaServerItem getMediaInfoByUri(String uri){
             String[] split = uri.split("/");
             String mediaServerId = split[2];
-            return mediaServerService.getOne(mediaServerId);
+            if ("default".equals(mediaServerId)) {
+                return mediaServerService.getDefaultMediaServer();
+            }else {
+                return mediaServerService.getOne(mediaServerId);
+            }
+
         }
 
         /**
@@ -234,9 +262,13 @@ public class ProxyServletConfig {
             MediaServerItem mediaInfo = getMediaInfoByUri(requestURI);
             String url = super.rewriteUrlFromRequest(servletRequest);
             if (mediaInfo == null) {
+                logger.error("[录像服务访问代理]，错误：处理url信息时未找到流媒体信息=>{}", requestURI);
                 return  url;
             }
-            return url.replace(mediaInfo.getId() + "/", "");
+            if (!StringUtils.isEmpty(mediaInfo.getId())) {
+                url = url.replace(mediaInfo.getId() + "/", "");
+            }
+            return url.replace("default/", "");
         }
     }
 

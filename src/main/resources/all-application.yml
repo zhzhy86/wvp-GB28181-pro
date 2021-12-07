@@ -73,13 +73,15 @@ sip:
     # [可选] 默认设备认证密码，后续扩展使用设备单独密码, 移除密码将不进行校验
     password: admin123
     # [可选] 心跳超时时间， 建议设置为心跳周期的三倍
-    keepalive-timeout: 180
+    keepalive-timeout: 255
     # [可选] 国标级联注册失败，再次发起注册的时间间隔。 默认60秒
     register-time-interval: 60
     # [可选] 云台控制速度
     ptz-speed: 50
     # TODO [可选] 收到心跳后自动上线， 重启服务后会将所有设备置为离线，默认false，等待注册后上线。设置为true则收到心跳设置为上线。
     # keepalliveToOnline: false
+    # 是否存储alarm信息
+    alarm: false
 
 #zlm 默认服务器配置
 media:
@@ -134,9 +136,11 @@ logging:
     level:
         com.genersoft.iot: debug
         com.genersoft.iot.vmp.storager.dao: info
-        com.genersoft.iot.vmp.gb28181: info
+        com.genersoft.iot.vmp.gb28181: debug
 # [根据业务需求配置]
 user-settings:
+    # [可选] 服务ID，不写则为000000
+    server-id:
     # [可选] 自动点播， 使用固定流地址进行播放时，如果未点播则自动进行点播, 需要rtp.enable=true
     auto-apply-play: false
     # [可选] 部分设备需要扩展SDP，需要打开此设置
@@ -156,6 +160,8 @@ user-settings:
     record-push-live: true
     # 是否将日志存储进数据库
     logInDatebase: true
+    # 第三方匹配，用于从stream钟获取有效信息
+    thirdPartyGBIdReg: [\s\S]*
 
 # 在线文档： swagger-ui（生产环境建议关闭）
 swagger-ui:

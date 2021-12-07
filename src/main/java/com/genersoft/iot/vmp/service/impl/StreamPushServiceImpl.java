@@ -12,6 +12,7 @@ import com.genersoft.iot.vmp.service.IMediaServerService;
 import com.genersoft.iot.vmp.service.IStreamPushService;
 import com.genersoft.iot.vmp.storager.IRedisCatchStorage;
 import com.genersoft.iot.vmp.storager.dao.GbStreamMapper;
+import com.genersoft.iot.vmp.storager.dao.PlatformGbStreamMapper;
 import com.genersoft.iot.vmp.storager.dao.StreamPushMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -33,6 +34,9 @@ public class StreamPushServiceImpl implements IStreamPushService {
     private StreamPushMapper streamPushMapper;
 
     @Autowired
+    private PlatformGbStreamMapper platformGbStreamMapper;
+
+    @Autowired
     private ZLMRESTfulUtils zlmresTfulUtils;
 
     @Autowired
@@ -51,32 +55,38 @@ public class StreamPushServiceImpl implements IStreamPushService {
         for (MediaItem item : mediaItems) {
 
             // 不保存国标推理以及拉流代理的流
-            if (item.getOriginType() == 3 || item.getOriginType() == 4 || item.getOriginType() == 5) {
-                continue;
+            if (item.getOriginType() == 1 || item.getOriginType() == 2 || item.getOriginType() == 8) {
+                String key = item.getApp() + "_" + item.getStream();
+                StreamPushItem streamPushItem = result.get(key);
+                if (streamPushItem == null) {
+                    streamPushItem = transform(item);
+                    result.put(key, streamPushItem);
+                }
             }
-            String key = item.getApp() + "_" + item.getStream();
-            StreamPushItem streamPushItem = result.get(key);
-            if (streamPushItem == null) {
-                streamPushItem = new StreamPushItem();
-                streamPushItem.setApp(item.getApp());
-                streamPushItem.setMediaServerId(mediaServerItem.getId());
-                streamPushItem.setStream(item.getStream());
-                streamPushItem.setAliveSecond(item.getAliveSecond());
-                streamPushItem.setCreateStamp(item.getCreateStamp());
-                streamPushItem.setOriginSock(item.getOriginSock());
-                streamPushItem.setTotalReaderCount(item.getTotalReaderCount());
-                streamPushItem.setOriginType(item.getOriginType());
-                streamPushItem.setOriginTypeStr(item.getOriginTypeStr());
-                streamPushItem.setOriginUrl(item.getOriginUrl());
-                streamPushItem.setCreateStamp(item.getCreateStamp());
-                streamPushItem.setAliveSecond(item.getAliveSecond());
-                streamPushItem.setStatus(true);
-                streamPushItem.setVhost(item.getVhost());
-                result.put(key, streamPushItem);
-            }
+
         }
 
         return new ArrayList<>(result.values());
+    }
+    @Override
+    public StreamPushItem transform(MediaItem item) {
+        StreamPushItem streamPushItem = new StreamPushItem();
+        streamPushItem.setApp(item.getApp());
+        streamPushItem.setMediaServerId(item.getMediaServerId());
+        streamPushItem.setStream(item.getStream());
+        streamPushItem.setAliveSecond(item.getAliveSecond());
+        streamPushItem.setCreateStamp(item.getCreateStamp());
+        streamPushItem.setOriginSock(item.getOriginSock());
+        streamPushItem.setTotalReaderCount(item.getTotalReaderCount());
+        streamPushItem.setOriginType(item.getOriginType());
+        streamPushItem.setOriginTypeStr(item.getOriginTypeStr());
+        streamPushItem.setOriginUrl(item.getOriginUrl());
+        streamPushItem.setCreateStamp(item.getCreateStamp());
+        streamPushItem.setAliveSecond(item.getAliveSecond());
+        streamPushItem.setStatus(true);
+        streamPushItem.setStreamType("push");
+        streamPushItem.setVhost(item.getVhost());
+        return streamPushItem;
     }
 
     @Override
@@ -104,4 +114,25 @@ public class StreamPushServiceImpl implements IStreamPushService {
         }
         return del > 0;
     }
+
+
+    @Override
+    public StreamPushItem getPush(String app, String streamId) {
+
+        return streamPushMapper.selectOne(app, streamId);
+    }
+
+    @Override
+    public boolean stop(String app, String streamId) {
+        StreamPushItem streamPushItem = streamPushMapper.selectOne(app, streamId);
+        int delStream = streamPushMapper.del(app, streamId);
+        gbStreamMapper.del(app, streamId);
+        platformGbStreamMapper.delByAppAndStream(app, streamId);
+        if (delStream > 0) {
+            MediaServerItem mediaServerItem = mediaServerService.getOne(streamPushItem.getMediaServerId());
+            zlmresTfulUtils.closeStreams(mediaServerItem,app, streamId);
+        }
+        return true;
+    }
+
 }

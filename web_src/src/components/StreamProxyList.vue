@@ -50,6 +50,7 @@
               </div>
             </template>
           </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" align="center" width="150" show-overflow-tooltip/>
 					<el-table-column label="转HLS" width="120" align="center">
 						<template slot-scope="scope">
 						<div slot="reference" class="name-wrapper">
@@ -63,6 +64,14 @@
 						<div slot="reference" class="name-wrapper">
 							<el-tag size="medium" v-if="scope.row.enable_mp4">已启用</el-tag>
 							<el-tag size="medium" type="info" v-if="!scope.row.enable_mp4">未启用</el-tag>
+						</div>
+						</template>
+					</el-table-column>
+					<el-table-column label="无人观看自动删除" width="160" align="center">
+						<template slot-scope="scope">
+						<div slot="reference" class="name-wrapper">
+							<el-tag size="medium" v-if="scope.row.enable_remove_none_reader">已启用</el-tag>
+							<el-tag size="medium" type="info" v-if="!scope.row.enable_remove_none_reader">未启用</el-tag>
 						</div>
 						</template>
 					</el-table-column>

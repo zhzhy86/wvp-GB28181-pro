@@ -1,7 +1,9 @@
 package com.genersoft.iot.vmp.gb28181.event.online;
 
 import com.genersoft.iot.vmp.conf.SipConfig;
+import com.genersoft.iot.vmp.conf.UserSetup;
 import com.genersoft.iot.vmp.gb28181.bean.Device;
+import com.genersoft.iot.vmp.storager.dao.dto.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,12 +15,11 @@ import com.genersoft.iot.vmp.storager.IVideoManagerStorager;
 import com.genersoft.iot.vmp.utils.redis.RedisUtil;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
- * @Description: 在线事件监听器，监听到离线后，修改设备离在线状态。 设备在线有两个来源：
- *               1、设备主动注销，发送注销指令，{@link com.genersoft.iot.vmp.gb28181.transmit.request.impl.RegisterRequestProcessor}
- *               2、设备未知原因离线，心跳超时,{@link com.genersoft.iot.vmp.gb28181.transmit.request.impl.MessageRequestProcessor}
+ * @description: 在线事件监听器，监听到离线后，修改设备离在线状态。 设备在线有两个来源：
+ *               1、设备主动注销，发送注销指令
+ *               2、设备未知原因离线，心跳超时
  * @author: swwheihei
  * @date: 2020年5月6日 下午1:51:23
  */
@@ -36,6 +37,9 @@ public class OnlineEventListener implements ApplicationListener<OnlineEvent> {
 	@Autowired
     private SipConfig sipConfig;
 
+	@Autowired
+    private UserSetup userSetup;
+
 	private SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	@Override
@@ -45,7 +49,7 @@ public class OnlineEventListener implements ApplicationListener<OnlineEvent> {
 			logger.debug("设备上线事件触发，deviceId：" + event.getDevice().getDeviceId() + ",from:" + event.getFrom());
 		}
 		Device device = event.getDevice();
-		String key = VideoManagerConstants.KEEPLIVEKEY_PREFIX + event.getDevice().getDeviceId();
+		String key = VideoManagerConstants.KEEPLIVEKEY_PREFIX + userSetup.getServerId() + "_" + event.getDevice().getDeviceId();
 
 		switch (event.getFrom()) {
 		// 注册时触发的在线事件，先在redis中增加超时超时监听
@@ -74,5 +78,8 @@ public class OnlineEventListener implements ApplicationListener<OnlineEvent> {
 		device.setOnline(1);
 		// 处理上线监听
 		storager.updateDevice(device);
+
+		// TODO 上线添加订阅
+
 	}
 }

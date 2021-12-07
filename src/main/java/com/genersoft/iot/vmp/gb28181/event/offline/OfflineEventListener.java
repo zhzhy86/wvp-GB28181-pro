@@ -1,5 +1,6 @@
 package com.genersoft.iot.vmp.gb28181.event.offline;
 
+import com.genersoft.iot.vmp.conf.UserSetup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,8 +12,8 @@ import com.genersoft.iot.vmp.storager.IVideoManagerStorager;
 import com.genersoft.iot.vmp.utils.redis.RedisUtil;
 
 /**
- * @Description: 离线事件监听器，监听到离线后，修改设备离在线状态。 设备离线有两个来源：
- *               1、设备主动注销，发送注销指令，{@link com.genersoft.iot.vmp.gb28181.transmit.request.impl.RegisterRequestProcessor}
+ * @description: 离线事件监听器，监听到离线后，修改设备离在线状态。 设备离线有两个来源：
+ *               1、设备主动注销，发送注销指令，{@link com.genersoft.iot.vmp.gb28181.transmit.event.request.impl.RegisterRequestProcessor}
  *               2、设备未知原因离线，心跳超时,{@link com.genersoft.iot.vmp.gb28181.event.offline.OfflineEventListener}
  * @author: swwheihei
  * @date: 2020年5月6日 下午1:51:23
@@ -28,6 +29,9 @@ public class OfflineEventListener implements ApplicationListener<OfflineEvent> {
 	@Autowired
     private RedisUtil redis;
 
+	@Autowired
+    private UserSetup userSetup;
+
 	@Override
 	public void onApplicationEvent(OfflineEvent event) {
 		
@@ -35,7 +39,7 @@ public class OfflineEventListener implements ApplicationListener<OfflineEvent> {
 			logger.debug("设备离线事件触发，deviceId：" + event.getDeviceId() + ",from:" + event.getFrom());
 		}
 
-		String key = VideoManagerConstants.KEEPLIVEKEY_PREFIX + event.getDeviceId();
+		String key = VideoManagerConstants.KEEPLIVEKEY_PREFIX + userSetup.getServerId() + "_" + event.getDeviceId();
 
 		switch (event.getFrom()) {
 			// 心跳超时触发的离线事件，说明redis中已删除，无需处理
@@ -54,5 +58,8 @@ public class OfflineEventListener implements ApplicationListener<OfflineEvent> {
 
 		// 处理离线监听
 		storager.outline(event.getDeviceId());
+
+		// TODO 离线取消订阅
+
 	}
 }

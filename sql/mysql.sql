@@ -23,6 +23,7 @@ create table device
     updateTime    varchar(50)  not null,
     port          int          not null,
     expires       int          not null,
+    subscribeCycleForCatalog       int          not null,
     hostAddress   varchar(50)  not null,
     charset       varchar(50)  not null
 );
@@ -172,6 +173,7 @@ create table parent_platform
     ptz            int          null,
     rtcp           int          null,
     status         bit          null,
+    shareAllLiveStream         int          null,
     primary key (id, serverGBId)
 );
 
@@ -207,6 +209,7 @@ create table stream_proxy
     enable_hls     bit          null,
     enable_mp4     bit          null,
     enable         bit          not null,
+    enable_remove_none_reader    bit          not null,
     createTime     varchar(50)  not null,
     primary key (app, stream)
 );

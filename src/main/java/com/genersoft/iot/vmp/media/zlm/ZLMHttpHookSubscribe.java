@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @Description:针对 ZLMediaServer的hook事件订阅
+ * @description:针对 ZLMediaServer的hook事件订阅
  * @author: pan
  * @date:   2020年12月2日 21:17:32
  */
@@ -27,7 +27,8 @@ public class ZLMHttpHookSubscribe {
         on_stream_changed,
         on_stream_none_reader,
         on_stream_not_found,
-        on_server_started
+        on_server_started,
+        on_server_keepalive
     }
 
     public interface Event{
