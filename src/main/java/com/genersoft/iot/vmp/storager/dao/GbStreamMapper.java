@@ -60,4 +60,23 @@ public interface GbStreamMapper {
 
     @Select("SELECT gs.*, pgs.platformId FROM gb_stream gs LEFT JOIN  platform_gb_stream pgs ON gs.app = pgs.app AND gs.stream = pgs.stream WHERE mediaServerId=#{mediaServerId} ")
     List<GbStream> selectAllByMediaServerId(String mediaServerId);
+
+    @Update("UPDATE gb_stream " +
+            "SET status=${status} " +
+            "WHERE mediaServerId=#{mediaServerId} ")
+    void updateStatusByMediaServerId(String mediaServerId, boolean status);
+
+    @Select("SELECT * FROM gb_stream WHERE mediaServerId=#{mediaServerId}")
+    void delByMediaServerId(String mediaServerId);
+
+    @Delete("DELETE FROM gb_stream WHERE streamType=#{type} AND gbId=NULL AND mediaServerId=#{mediaServerId}")
+    void deleteWithoutGBId(String type, String mediaServerId);
+
+    @Delete("<script> "+
+            "DELETE FROM gb_stream where " +
+            "<foreach collection='streamProxyItemList' item='item' separator='or'>" +
+            "(app=#{item.app} and stream=#{item.stream}) " +
+            "</foreach>" +
+            "</script>")
+    void batchDel(List<StreamProxyItem> streamProxyItemList);
 }

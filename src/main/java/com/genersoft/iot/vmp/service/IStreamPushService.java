@@ -1,6 +1,7 @@
 package com.genersoft.iot.vmp.service;
 
 import com.genersoft.iot.vmp.gb28181.bean.GbStream;
+import com.genersoft.iot.vmp.media.zlm.ZLMServerConfig;
 import com.genersoft.iot.vmp.media.zlm.dto.MediaItem;
 import com.genersoft.iot.vmp.media.zlm.dto.MediaServerItem;
 import com.genersoft.iot.vmp.media.zlm.dto.StreamPushItem;
@@ -33,6 +34,7 @@ public interface IStreamPushService {
      * @return
      */
     PageInfo<StreamPushItem> getPushList(Integer page, Integer count);
+    List<StreamPushItem> getPushList(String mediaSererId);
 
     StreamPushItem transform(MediaItem item);
 
@@ -46,4 +48,19 @@ public interface IStreamPushService {
      */
     boolean stop(String app, String streamId);
 
+    /**
+     * 新的节点加入
+     * @param mediaServerId
+     * @return
+     */
+    void zlmServerOnline(String mediaServerId);
+
+    /**
+     * 节点离线
+     * @param mediaServerId
+     * @return
+     */
+    void zlmServerOffline(String mediaServerId);
+
+    void clean();
 }

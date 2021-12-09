@@ -37,7 +37,9 @@ public class MediaServerItem{
 
     private String secret;
 
-    private String streamNoneReaderDelayMS;
+    private int streamNoneReaderDelayMS;
+
+    private int hookAliveInterval;
 
     private boolean rtpEnable;
 
@@ -87,6 +89,7 @@ public class MediaServerItem{
         autoConfig = true; // 默认值true;
         secret = zlmServerConfig.getApiSecret();
         streamNoneReaderDelayMS = zlmServerConfig.getGeneralStreamNoneReaderDelayMS();
+        hookAliveInterval = zlmServerConfig.getHookAliveInterval();
         rtpEnable = false; // 默认使用单端口;直到用户自己设置开启多端口
         rtpPortRange = "30000,30500"; // 默认使用30000,30500作为级联时发送流的端口号
         sendRtpPortRange = "30000,30500"; // 默认使用30000,30500作为级联时发送流的端口号
@@ -206,11 +209,11 @@ public class MediaServerItem{
         this.secret = secret;
     }
 
-    public String getStreamNoneReaderDelayMS() {
+    public int getStreamNoneReaderDelayMS() {
         return streamNoneReaderDelayMS;
     }
 
-    public void setStreamNoneReaderDelayMS(String streamNoneReaderDelayMS) {
+    public void setStreamNoneReaderDelayMS(int streamNoneReaderDelayMS) {
         this.streamNoneReaderDelayMS = streamNoneReaderDelayMS;
     }
 
@@ -308,5 +311,13 @@ public class MediaServerItem{
 
     public void setSendRtpPortRange(String sendRtpPortRange) {
         this.sendRtpPortRange = sendRtpPortRange;
+    }
+
+    public int getHookAliveInterval() {
+        return hookAliveInterval;
+    }
+
+    public void setHookAliveInterval(int hookAliveInterval) {
+        this.hookAliveInterval = hookAliveInterval;
     }
 }

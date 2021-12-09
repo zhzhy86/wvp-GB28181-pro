@@ -32,7 +32,7 @@ public class ZLMServerConfig {
     private String generalMaxStreamWaitMS;
 
     @JSONField(name = "general.streamNoneReaderDelayMS")
-    private String generalStreamNoneReaderDelayMS;
+    private int generalStreamNoneReaderDelayMS;
 
     @JSONField(name = "ip")
     private String ip;
@@ -64,6 +64,9 @@ public class ZLMServerConfig {
 
     @JSONField(name = "hook.admin_params")
     private String hookAdminParams;
+
+    @JSONField(name = "hook.alive_interval")
+    private int hookAliveInterval;
 
     @JSONField(name = "hook.enable")
     private String hookEnable;
@@ -296,11 +299,11 @@ public class ZLMServerConfig {
         this.generalMaxStreamWaitMS = generalMaxStreamWaitMS;
     }
 
-    public String getGeneralStreamNoneReaderDelayMS() {
+    public int getGeneralStreamNoneReaderDelayMS() {
         return generalStreamNoneReaderDelayMS;
     }
 
-    public void setGeneralStreamNoneReaderDelayMS(String generalStreamNoneReaderDelayMS) {
+    public void setGeneralStreamNoneReaderDelayMS(int generalStreamNoneReaderDelayMS) {
         this.generalStreamNoneReaderDelayMS = generalStreamNoneReaderDelayMS;
     }
 
@@ -790,5 +793,13 @@ public class ZLMServerConfig {
 
     public void setShellPhell(String shellPhell) {
         this.shellPhell = shellPhell;
+    }
+
+    public int getHookAliveInterval() {
+        return hookAliveInterval;
+    }
+
+    public void setHookAliveInterval(int hookAliveInterval) {
+        this.hookAliveInterval = hookAliveInterval;
     }
 }

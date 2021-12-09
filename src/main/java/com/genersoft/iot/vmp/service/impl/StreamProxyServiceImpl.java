@@ -2,16 +2,22 @@ package com.genersoft.iot.vmp.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.genersoft.iot.vmp.common.StreamInfo;
+import com.genersoft.iot.vmp.conf.UserSetup;
 import com.genersoft.iot.vmp.gb28181.bean.GbStream;
+import com.genersoft.iot.vmp.gb28181.bean.ParentPlatform;
 import com.genersoft.iot.vmp.media.zlm.ZLMRESTfulUtils;
+import com.genersoft.iot.vmp.media.zlm.ZLMServerConfig;
+import com.genersoft.iot.vmp.media.zlm.dto.MediaItem;
 import com.genersoft.iot.vmp.media.zlm.dto.MediaServerItem;
 import com.genersoft.iot.vmp.media.zlm.dto.StreamProxyItem;
+import com.genersoft.iot.vmp.media.zlm.dto.StreamPushItem;
 import com.genersoft.iot.vmp.service.IGbStreamService;
 import com.genersoft.iot.vmp.service.IMediaServerService;
 import com.genersoft.iot.vmp.service.IMediaService;
 import com.genersoft.iot.vmp.storager.IRedisCatchStorage;
 import com.genersoft.iot.vmp.storager.IVideoManagerStorager;
 import com.genersoft.iot.vmp.storager.dao.GbStreamMapper;
+import com.genersoft.iot.vmp.storager.dao.ParentPlatformMapper;
 import com.genersoft.iot.vmp.storager.dao.PlatformGbStreamMapper;
 import com.genersoft.iot.vmp.storager.dao.StreamProxyMapper;
 import com.genersoft.iot.vmp.service.IStreamProxyService;
@@ -21,9 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * 视频代理业务
@@ -46,10 +52,19 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
     private StreamProxyMapper streamProxyMapper;
 
     @Autowired
+    private IRedisCatchStorage redisCatchStorage;
+
+    @Autowired
+    private UserSetup userSetup;
+
+    @Autowired
     private GbStreamMapper gbStreamMapper;
 
     @Autowired
     private PlatformGbStreamMapper platformGbStreamMapper;
+
+    @Autowired
+    private ParentPlatformMapper parentPlatformMapper;
 
     @Autowired
     private IGbStreamService gbStreamService;
@@ -98,6 +113,7 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
                 }else {
                     Integer code = jsonObject.getInteger("code");
                     if (code == 0) {
+                        streamLive = true;
                         StreamInfo streamInfo = mediaService.getStreamInfoByAppAndStream(
                                 mediaInfo, param.getApp(), param.getStream(), null);
                         wvpResult.setData(streamInfo);
@@ -112,13 +128,25 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
         }else {
             result.append("保存失败");
         }
-        if (param.getPlatformGbId() != null && streamLive) {
+        if ( !StringUtils.isEmpty(param.getPlatformGbId()) && streamLive) {
             List<GbStream> gbStreams = new ArrayList<>();
             gbStreams.add(param);
             if (gbStreamService.addPlatformInfo(gbStreams, param.getPlatformGbId())){
                 result.append(",  关联国标平台[ " + param.getPlatformGbId() + " ]成功");
             }else {
                 result.append(",  关联国标平台[ " + param.getPlatformGbId() + " ]失败");
+            }
+        }
+        // 查找开启了全部直播流共享的上级平台
+        List<ParentPlatform> parentPlatforms = parentPlatformMapper.selectAllAhareAllLiveStream();
+        if (parentPlatforms.size() > 0) {
+            for (ParentPlatform parentPlatform : parentPlatforms) {
+                param.setPlatformId(parentPlatform.getServerGBId());
+                String stream = param.getStream();
+                StreamProxyItem streamProxyItems = platformGbStreamMapper.selectOne(param.getApp(), stream, parentPlatform.getServerGBId());
+                if (streamProxyItems == null) {
+                    platformGbStreamMapper.add(param);
+                }
             }
         }
         wvpResult.setMsg(result.toString());
@@ -134,6 +162,9 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
             return null;
         }else {
             mediaServerItem = mediaServerService.getOne(param.getMediaServerId());
+        }
+        if (mediaServerItem == null) {
+            return null;
         }
         if ("default".equals(param.getType())){
             result = zlmresTfulUtils.addStreamProxy(mediaServerItem, param.getApp(), param.getStream(), param.getUrl(),
@@ -219,7 +250,6 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
                 }
             }
         }
-
         return result;
     }
 
@@ -227,5 +257,44 @@ public class StreamProxyServiceImpl implements IStreamProxyService {
     @Override
     public StreamProxyItem getStreamProxyByAppAndStream(String app, String streamId) {
         return videoManagerStorager.getStreamProxyByAppAndStream(app, streamId);
+    }
+
+    @Override
+    public void zlmServerOnline(String mediaServerId) {
+        zlmServerOffline(mediaServerId);
+    }
+
+    @Override
+    public void zlmServerOffline(String mediaServerId) {
+        // 移除开启了无人观看自动移除的流
+        List<StreamProxyItem> streamProxyItemList = streamProxyMapper.selecAutoRemoveItemByMediaServerId(mediaServerId);
+        if (streamProxyItemList.size() > 0) {
+            gbStreamMapper.batchDel(streamProxyItemList);
+        }
+        streamProxyMapper.deleteAutoRemoveItemByMediaServerId(mediaServerId);
+        // 其他的流设置未启用
+        streamProxyMapper.updateStatus(false, mediaServerId);
+        String type = "PULL";
+
+        // 发送redis消息
+        List<StreamInfo> streamInfoList = redisCatchStorage.getStreams(mediaServerId, type);
+        if (streamInfoList.size() > 0) {
+            for (StreamInfo streamInfo : streamInfoList) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("serverId", userSetup.getServerId());
+                jsonObject.put("app", streamInfo.getApp());
+                jsonObject.put("stream", streamInfo.getStreamId());
+                jsonObject.put("register", false);
+                jsonObject.put("mediaServerId", mediaServerId);
+                redisCatchStorage.sendStreamChangeMsg(type, jsonObject);
+                // 移除redis内流的信息
+                redisCatchStorage.removeStream(mediaServerId, type, streamInfo.getApp(), streamInfo.getStreamId());
+            }
+        }
+    }
+
+    @Override
+    public void clean() {
+
     }
 }
