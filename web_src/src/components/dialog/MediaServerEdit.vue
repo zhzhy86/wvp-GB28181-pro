@@ -41,10 +41,6 @@
                 <el-input  v-if="currentStep === 2"  v-model="mediaServerForm.httpPort" disabled :disabled="mediaServerForm.defaultServer"></el-input>
                 <el-input  v-if="currentStep === 3"  v-model="mediaServerForm.httpPort" :disabled="mediaServerForm.defaultServer"></el-input>
               </el-form-item>
-              <el-form-item label="SECRET" prop="secret">
-                <el-input v-if="currentStep === 2"  v-model="mediaServerForm.secret" disabled :disabled="mediaServerForm.defaultServer"></el-input>
-                <el-input v-if="currentStep === 3"  v-model="mediaServerForm.secret" :disabled="mediaServerForm.defaultServer"></el-input>
-              </el-form-item>
               <el-form-item label="HOOK IP" prop="ip">
                 <el-input v-model="mediaServerForm.hookIp" placeholder="媒体服务HOOK_IP" clearable :disabled="mediaServerForm.defaultServer"></el-input>
               </el-form-item>
@@ -74,12 +70,17 @@
               <el-form-item label="RTMPS PORT" prop="rtmpSSlPort">
                 <el-input v-model="mediaServerForm.rtmpSSlPort" placeholder="媒体服务RTMPS_PORT" clearable :disabled="mediaServerForm.defaultServer"></el-input>
               </el-form-item>
+              <el-form-item label="SECRET" prop="secret">
+                <el-input v-if="currentStep === 2"  v-model="mediaServerForm.secret" disabled :disabled="mediaServerForm.defaultServer"></el-input>
+                <el-input v-if="currentStep === 3"  v-model="mediaServerForm.secret" :disabled="mediaServerForm.defaultServer"></el-input>
+              </el-form-item>
               <el-form-item label="自动配置媒体服务" >
                 <el-switch v-model="mediaServerForm.autoConfig" :disabled="mediaServerForm.defaultServer"></el-switch>
               </el-form-item>
               <el-form-item label="收流端口模式" >
-                <el-switch  active-text="多端口" inactive-text="单端口" v-model="mediaServerForm.rtpEnable" :disabled="mediaServerForm.defaultServer"></el-switch>
+                <el-switch  active-text="多端口" inactive-text="单端口" @change="portRangeChange" v-model="mediaServerForm.rtpEnable" :disabled="mediaServerForm.defaultServer"></el-switch>
               </el-form-item>
+
 
               <el-form-item v-if="!mediaServerForm.rtpEnable" label="收流端口" prop="rtpProxyPort">
                 <el-input v-model.number="mediaServerForm.rtpProxyPort" clearable :disabled="mediaServerForm.defaultServer"></el-input>
@@ -89,13 +90,10 @@
                 -
                 <el-input v-model="rtpPortRange2" placeholder="终止" @change="portRangeChange" clearable style="width: 100px" prop="rtpPortRange2" :disabled="mediaServerForm.defaultServer"></el-input>
               </el-form-item>
-              <el-form-item label="推流端口" prop="sendRtpPortRange1">
-                <el-input v-model="sendRtpPortRange1" placeholder="起始" @change="portRangeChange" clearable style="width: 100px" prop="sendRtpPortRange1" :disabled="mediaServerForm.defaultServer"></el-input>
+              <el-form-item v-if="mediaServerForm.sendRtpEnable" label="发流端口" >
+                <el-input v-model="sendRtpPortRange1" placeholder="起始" @change="portRangeChange" clearable style="width: 100px" prop="rtpPortRange1" :disabled="mediaServerForm.defaultServer"></el-input>
                 -
-                <el-input v-model="sendRtpPortRange2" placeholder="终止" @change="portRangeChange" clearable style="width: 100px" prop="sendRtpPortRange2" :disabled="mediaServerForm.defaultServer"></el-input>
-              </el-form-item>
-              <el-form-item label="无人观看多久后停止拉流" >
-                <el-input v-model.number="mediaServerForm.streamNoneReaderDelayMS" clearable :disabled="mediaServerForm.defaultServer"></el-input>
+                <el-input v-model="sendRtpPortRange2" placeholder="终止" @change="portRangeChange" clearable style="width: 100px" prop="rtpPortRange2" :disabled="mediaServerForm.defaultServer"></el-input>
               </el-form-item>
               <el-form-item label="录像管理服务端口" prop="recordAssistPort">
                 <el-input v-model.number="mediaServerForm.recordAssistPort" :disabled="mediaServerForm.defaultServer">
@@ -172,7 +170,6 @@ export default {
         hookIp: "",
         sdpIp: "",
         streamIp: "",
-        streamNoneReaderDelayMS: "",
         secret: "035c73f7-bb6b-4889-a715-d9eb2d1925cc",
         httpPort: "",
         httpSSlPort: "",
@@ -188,8 +185,9 @@ export default {
       },
       rtpPortRange1:30000,
       rtpPortRange2:30500,
-      sendRtpPortRange1:30000,
-      sendRtpPortRange2:30500,
+
+      sendRtpPortRange1:50000,
+      sendRtpPortRange2:60000,
 
       rules: {
         ip:  [{ required: true, validator: isValidIp, message: '请输入有效的IP地址', trigger: 'blur' }],
@@ -200,8 +198,6 @@ export default {
         rtmpSSlPort:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
         rtpPortRange1:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
         rtpPortRange2:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
-        sendRtpPortRange1:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
-        sendRtpPortRange2:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
         rtpProxyPort:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
         rtspPort:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
         rtspSSLPort:  [{ required: true, validator: isValidPort, message: '请输入有效的端口号', trigger: 'blur' }],
@@ -228,14 +224,16 @@ export default {
         this.currentStep = 3;
         if (param.rtpPortRange) {
           let rtpPortRange = this.mediaServerForm.rtpPortRange.split(",");
+          let sendRtpPortRange = this.mediaServerForm.sendRtpPortRange.split(",");
           if (rtpPortRange.length > 0) {
             this.rtpPortRange1 =  rtpPortRange[0]
             this.rtpPortRange2 =  rtpPortRange[1]
           }
+          if (sendRtpPortRange.length > 0) {
+            this.sendRtpPortRange1 =  sendRtpPortRange[0]
+            this.sendRtpPortRange2 =  sendRtpPortRange[1]
+          }
         }
-        let sendRtpPortRange = this.mediaServerForm.sendRtpPortRange.split(",");
-        this.sendRtpPortRange1 = sendRtpPortRange[0]
-        this.sendRtpPortRange2 = sendRtpPortRange[1]
       }
     },
     checkServer: function() {
@@ -255,10 +253,10 @@ export default {
           that.mediaServerForm = data.data;
           that.mediaServerForm.httpPort = httpPort;
           that.mediaServerForm.autoConfig = true;
-          that.sendRtpPortRange1 = 30000
-          that.sendRtpPortRange2 = 30500
           that.rtpPortRange1 = 30000
           that.rtpPortRange2 = 30500
+          that.sendRtpPortRange1 = 50000
+          that.sendRtpPortRange2 = 60000
           that.serverCheck = 1;
         }else {
           that.serverCheck = -1;
@@ -332,7 +330,6 @@ export default {
         hookIp: "",
         sdpIp: "",
         streamIp: "",
-        streamNoneReaderDelayMS: "",
         secret: "035c73f7-bb6b-4889-a715-d9eb2d1925cc",
         httpPort: "",
         httpSSlPort: "",
@@ -346,10 +343,10 @@ export default {
         rtspPort: "",
         rtspSSLPort: "",
       };
-      this.sendRtpPortRange1 = 30000;
-      this.sendRtpPortRange2 = 30500;
       this.rtpPortRange1 = 30500;
       this.rtpPortRange2 = 30500;
+      this.sendRtpPortRange1 = 50000;
+      this.sendRtpPortRange2 = 60000;
       this.listChangeCallback = null
       this.currentStep = 1;
     },
@@ -357,7 +354,7 @@ export default {
       var result = false;
       var that = this;
       await that.$axios({
-        method: 'post',
+        method: 'get',
         url:`/api/platform/exit/${deviceGbId}`
       }).then(function (res) {
         result = res.data;
@@ -372,10 +369,10 @@ export default {
       }
     },
     portRangeChange: function() {
-      this.mediaServerForm.sendRtpPortRange = this.sendRtpPortRange1 + "," + this.sendRtpPortRange2
-      this.mediaServerForm.rtpPortRange = this.rtpPortRange1 + "," + this.rtpPortRange2
-      console.log(this.mediaServerForm.sendRtpPortRange)
-      console.log(this.mediaServerForm.rtpPortRange)
+      if (this.mediaServerForm.rtpEnable) {
+        this.mediaServerForm.rtpPortRange = this.rtpPortRange1 + "," + this.rtpPortRange2
+        this.mediaServerForm.sendRtpPortRange = this.sendRtpPortRange1 + "," + this.sendRtpPortRange2
+      }
     }
   },
 };

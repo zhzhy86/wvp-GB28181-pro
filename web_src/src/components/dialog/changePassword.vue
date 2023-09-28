@@ -35,6 +35,7 @@
 
 <script>
 import crypto from 'crypto'
+import userService from "../service/UserService";
 export default {
   name: "changePassword",
   props: {},
@@ -75,7 +76,10 @@ export default {
       isLoging: false,
       rules: {
         oldPassword: [{ required: true, validator: validatePass0, trigger: "blur" }],
-        newPassword: [{ required: true, validator: validatePass1, trigger: "blur" }],
+        newPassword: [{ required: true, validator: validatePass1, trigger: "blur" }, {
+            pattern: /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[~!@#$%^&*()_+`\-={}:";'<>?,.\/]).{8,20}$/,
+            message: "密码长度在8-20位之间,由字母+数字+特殊字符组成",
+          },],
         confirmPassword: [{ required: true, validator: validatePass2, trigger: "blur" }],
       },
     };
@@ -93,7 +97,7 @@ export default {
           password: this.newPassword
         }
       }).then((res)=> {
-        if (res.data === "success"){
+        if (res.data.code === 0) {
           this.$message({
             showClose: true,
             message: '修改成功，请重新登录',
@@ -102,7 +106,7 @@ export default {
           this.showDialog = false;
           setTimeout(()=>{
             // 删除cookie，回到登录页面
-            this.$cookies.remove("session");
+            userService.clearUserInfo();
             this.$router.push('/login');
             this.sseSource.close();
           },800)

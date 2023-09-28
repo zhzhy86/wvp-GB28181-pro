@@ -1,11 +1,12 @@
 package com.genersoft.iot.vmp.service;
 
-import com.alibaba.fastjson.JSONObject;
-import com.genersoft.iot.vmp.gb28181.bean.Device;
+import com.genersoft.iot.vmp.common.CommonCallback;
 import com.genersoft.iot.vmp.media.zlm.ZLMServerConfig;
 import com.genersoft.iot.vmp.media.zlm.dto.MediaServerItem;
+import com.genersoft.iot.vmp.media.zlm.dto.ServerKeepaliveData;
+import com.genersoft.iot.vmp.service.bean.MediaServerLoad;
 import com.genersoft.iot.vmp.service.bean.SSRCInfo;
-import com.genersoft.iot.vmp.vmanager.bean.WVPResult;
+import com.genersoft.iot.vmp.vmanager.bean.RecordFile;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface IMediaServerService {
 
     MediaServerItem getOne(String generalMediaServerId);
 
-    MediaServerItem getOneByHostAndPort(String host, int port);
+    void syncCatchFromDatabase();
 
     /**
      * 新的节点加入
@@ -38,15 +39,21 @@ public interface IMediaServerService {
      */
     void zlmServerOffline(String mediaServerId);
 
-    MediaServerItem getMediaServerForMinimumLoad();
+    MediaServerItem getMediaServerForMinimumLoad(Boolean hasAssist);
 
-    void setZLMConfig(MediaServerItem mediaServerItem);
+    void setZLMConfig(MediaServerItem mediaServerItem, boolean restart);
 
-    SSRCInfo openRTPServer(MediaServerItem mediaServerItem, String streamId);
+    void updateVmServer(List<MediaServerItem>  mediaServerItemList);
 
-    SSRCInfo openRTPServer(MediaServerItem mediaServerItem, String streamId, boolean isPlayback);
+    SSRCInfo openRTPServer(MediaServerItem mediaServerItem, String streamId, String ssrc, boolean ssrcCheck,
+                           boolean isPlayback, Integer port, Boolean reUsePort, Integer tcpMode);
 
-    void closeRTPServer(Device device, String channelId);
+    void closeRTPServer(MediaServerItem mediaServerItem, String streamId);
+
+    void closeRTPServer(MediaServerItem mediaServerItem, String streamId, CommonCallback<Boolean> callback);
+    Boolean updateRtpServerSSRC(MediaServerItem mediaServerItem, String streamId, String ssrc);
+
+    void closeRTPServer(String mediaServerId, String streamId);
 
     void clearRTPServer(MediaServerItem mediaServerItem);
 
@@ -56,11 +63,11 @@ public interface IMediaServerService {
 
     void removeCount(String mediaServerId);
 
-    void releaseSsrc(MediaServerItem mediaServerItem, String ssrc);
+    void releaseSsrc(String mediaServerItemId, String ssrc);
 
     void clearMediaServerForOnline();
 
-    WVPResult<String> add(MediaServerItem mediaSerItem);
+    void add(MediaServerItem mediaSerItem);
 
     int addToDatabase(MediaServerItem mediaSerItem);
 
@@ -68,13 +75,33 @@ public interface IMediaServerService {
 
     void resetOnlineServerItem(MediaServerItem serverItem);
 
-    WVPResult<MediaServerItem> checkMediaServer(String ip, int port, String secret);
+    MediaServerItem checkMediaServer(String ip, int port, String secret);
 
     boolean checkMediaRecordServer(String ip, int port);
 
     void delete(String id);
 
+    void deleteDb(String id);
+
     MediaServerItem getDefaultMediaServer();
 
-    void updateMediaServerKeepalive(String zlmServerConfig, JSONObject data);
+    void updateMediaServerKeepalive(String mediaServerId, ServerKeepaliveData data);
+
+    boolean checkRtpServer(MediaServerItem mediaServerItem, String rtp, String stream);
+
+    /**
+     * 获取负载信息
+     * @return
+     */
+    MediaServerLoad getLoad(MediaServerItem mediaServerItem);
+
+    /**
+     * 按时间查找录像文件
+     */
+    List<RecordFile> getRecords(String app, String stream, String startTime, String endTime, List<MediaServerItem> mediaServerItems);
+
+    /**
+     * 查找存在录像文件的时间
+     */
+    List<String> getRecordDates(String app, String stream, int year, int month, List<MediaServerItem> mediaServerItems);
 }
